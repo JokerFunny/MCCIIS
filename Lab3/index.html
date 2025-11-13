@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wikipedia Finder</title>
+    <style>
+      /* ---- Dark UI ---- */
+      :root {
+        --bg: #0b0c0f;
+        --fg: #e7e9ee;
+        --muted: #aeb3c2;
+        --card: #141821;
+        --border: #263043;
+        --accent: #7aa2ff;
+        --accent-2: #3dd6a2;
+        --danger: #ff6b6b;
+        --chip: #1d2230;
+        --chip-border: #2b354a;
+        --shadow: 0 8px 24px rgba(0, 0, 0, .35);
+      }
+
+      html,
+      body {
+        height: 100%
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        background: var(--bg);
+        color: var(--fg);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 28px auto;
+        padding: 0 16px
+      }
+
+      .title {
+        font-weight: 800;
+        letter-spacing: .2px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px
+      }
+
+      .badge {
+        font-size: .8rem;
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--chip)
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: var(--shadow)
+      }
+
+      /* Prevent overlap: input column grows, others keep natural width */
+      .ac-wrap {
+        position: relative;
+        flex: 1 1 520px;
+        min-width: 240px
+      }
+
+      .toolbar> :not(.ac-wrap) {
+        flex: 0 0 auto;
+      }
+
+      input[type="text"],
+      select,
+      button {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--chip);
+        color: var(--fg);
+        outline: none;
+      }
+
+      input::placeholder {
+        color: var(--muted)
+      }
+
+      button {
+        cursor: pointer;
+        border: 1px solid var(--border)
+      }
+
+      .btn {
+        background: var(--accent);
+        border: none;
+        color: #fff
+      }
+
+      .btn.secondary {
+        background: var(--accent-2)
+      }
+
+      .btn.ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--fg)
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 14px;
+        margin-top: 16px
+      }
+
+      .col-8 {
+        grid-column: span 8
+      }
+
+      .col-4 {
+        grid-column: span 4
+      }
+
+      @media(max-width:960px) {
+
+        .col-8,
+        .col-4 {
+          grid-column: span 12
+        }
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: var(--shadow);
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+      }
+
+      .thumb {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 1px solid var(--border);
+        background: #00000022
+      }
+
+      .meta {
+        flex: 1;
+        min-width: 0
+      }
+
+      .fact-title {
+        font-weight: 700;
+        margin: 0 0 6px 0
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: .9rem
+      }
+
+      .link {
+        color: #fff;
+        text-decoration: none;
+        background: var(--accent);
+        padding: 6px 10px;
+        border-radius: 8px
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap
+      }
+
+      .star {
+        cursor: pointer;
+        user-select: none;
+        font-size: 20px
+      }
+
+      .empty {
+        padding: 18px;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        text-align: center;
+        color: var(--muted)
+      }
+
+      /* ---- Autocomplete ---- */
+      .ac-panel {
+        position: absolute;
+        z-index: 20;
+        top: 44px;
+        left: 0;
+        right: 0;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        max-height: 420px;
+        overflow: auto;
+        display: none;
+      }
+
+      .ac-item {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 10px;
+        cursor: pointer
+      }
+
+      .ac-item:hover,
+      .ac-item.active {
+        background: #ffffff12
+      }
+
+      .ac-thumb {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        object-fit: cover;
+        border: 1px solid var(--border);
+        background: #00000022
+      }
+
+      .ac-title {
+        font-weight: 600
+      }
+
+      .ac-desc {
+        font-size: .85rem;
+        color: var(--muted)
+      }
+
+      .kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        background: #ffffff12;
+        border: 1px solid var(--border);
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: var(--muted)
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="title">
+        <span style="font-size:22px">📚</span>
+        <div>
+          <div style="font-size:20px">Wikipedia Finder</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="ac-wrap">
+          <input id="search" type="text" placeholder="Search topics (comma-separated). Asterisk search: black* => Black hole, Blackpink, BlackRock…" style="width:95%" />
+          <div id="ac" class="ac-panel"></div>
+        </div>
+        <button id="search-button" class="btn">Search</button>
+        <button id="update-all-button" class="btn secondary">Update All</button>
+        <select id="sorter">
+          <option value="recent">Sort: Last Added</option>
+          <option value="az">Sort: A → Z</option>
+        </select>
+        <button id="export" class="btn ghost">Export</button>
+        <label class="btn ghost" style="cursor:pointer">Import <input id="import" type="file" accept="application/json" style="display:none" />
+        </label>
+      </div>
+      <div class="grid">
+        <div class="col-8">
+          <h3>Results</h3>
+          <div id="facts-list"></div>
+        </div>
+        <div class="col-4">
+          <h3>⭐ Favorites</h3>
+          <div id="favorites"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const $ = s => document.querySelector(s);
+      const factsList = $('#facts-list');
+      const favoritesBox = $('#favorites');
+      const searchInput = $('#search');
+      const searchBtn = $('#search-button');
+      const updateAllBtn = $('#update-all-button');
+      const sorter = $('#sorter');
+      const exportBtn = $('#export');
+      const importInp = $('#import');
+      const acPanel = $('#ac');
+      const LS_KEY = 'facts:facts',
+        LS_FAV = 'facts:favorites';
+      const load = (k, def) => {
+        try {
+          return JSON.parse(localStorage.getItem(k)) ?? def;
+        } catch {
+          return def;
+        }
+      };
+      const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+      let items = load(LS_KEY, []); // [{title, extract, thumbnail, originalimage, content_urls, ts}]
+      let favorites = load(LS_FAV, []); // [title]
+      // ---------- Wikipedia summary ----------
+      async function fetchFact(title) {
+        const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+        const res = await fetch(url, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        if (!res.ok) throw new Error('Failed to fetch: ' + title);
+        return await res.json();
+      }
+      // ---------- Autocomplete (prefixsearch) ----------
+      async function fetchSuggestions(prefix, limit = 10) {
+        const endpoint = new URL('https://en.wikipedia.org/w/api.php');
+        endpoint.search = new URLSearchParams({
+          action: 'query',
+          format: 'json',
+          origin: '*',
+          generator: 'prefixsearch',
+          gpssearch: prefix,
+          gpslimit: String(limit),
+          prop: 'pageimages|description',
+          piprop: 'thumbnail',
+          pithumbsize: '48'
+        }).toString();
+        const res = await fetch(endpoint, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (!data.query || !data.query.pages) return [];
+        return Object.values(data.query.pages).sort((a, b) => a.index - b.index).map(p => ({
+          title: p.title,
+          desc: p.description || '',
+          thumb: p.thumbnail?.source || ''
+        }));
+      }
+      // ---------- Asterisk expansion ----------
+      async function expandQueryToTopics(raw, limitEach = 10) {
+        const tokens = raw.split(',').map(s => s.trim()).filter(Boolean);
+        const topics = [];
+        for (const t of tokens) {
+          if (t.endsWith('*')) {
+            const prefix = t.slice(0, -1);
+            if (!prefix) continue;
+            const sug = await fetchSuggestions(prefix, limitEach);
+            for (const s of sug) topics.push(s.title);
+          } else {
+            topics.push(t);
+          }
+        }
+        // de-dup
+        const seen = new Set();
+        const out = [];
+        for (const t of topics) {
+          const k = t.toLowerCase();
+          if (!seen.has(k)) {
+            seen.add(k);
+            out.push(t);
+          }
+        }
+        return out;
+      }
+      // ---------- Rendering ----------
+      function createCard(data) {
+        const el = document.createElement('div');
+        el.className = 'card';
+        const imgSrc = data.thumbnail?.source || data.originalimage?.source || '';
+        const img = document.createElement('img');
+        img.className = 'thumb';
+        if (imgSrc) {
+          img.loading = 'lazy';
+          img.src = imgSrc;
+          img.alt = data.title;
+        } else img.style.opacity = .2;
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const title = document.createElement('h4');
+        title.className = 'fact-title';
+        title.textContent = data.title || 'Untitled';
+        const desc = document.createElement('div');
+        desc.className = 'muted';
+        desc.textContent = data.extract || 'No summary available.';
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const a = document.createElement('a');
+        a.className = 'link';
+        a.href = data.content_urls?.desktop?.page || '#';
+        a.target = '_blank';
+        a.textContent = 'Read on Wikipedia';
+        const star = document.createElement('span');
+        star.className = 'star';
+        const fav = favorites.includes(data.title);
+        star.textContent = fav ? '⭐' : '☆';
+        star.title = fav ? 'Remove from favorites' : 'Add to favorites';
+        star.onclick = () => {
+          toggleFavorite(data.title);
+          star.textContent = favorites.includes(data.title) ? '⭐' : '☆';
+          renderFavorites();
+        };
+        const copy = document.createElement('button');
+        copy.className = 'btn ghost';
+        copy.textContent = 'Copy link';
+        copy.onclick = async () => {
+          if (a.href && a.href !== '#') await navigator.clipboard.writeText(a.href);
+          copy.textContent = 'Copied!';
+          setTimeout(() => copy.textContent = 'Copy link', 900);
+        };
+        actions.append(a, copy, star);
+        meta.append(title, desc, actions);
+        el.append(img, meta);
+        return el;
+      }
+
+      function render() {
+        let list = [...items];
+        if (sorter.value === 'az') list.sort((a, b) => a.title.localeCompare(b.title));
+        else list.sort((a, b) => b.ts - a.ts);
+        factsList.innerHTML = '';
+        if (!list.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.innerHTML = 'No results for your search. Try "black*" and click "Search" as example.';
+          factsList.appendChild(empty);
+        } else {
+          for (const it of list) factsList.appendChild(createCard(it));
+        }
+        renderFavorites();
+      }
+
+      function renderFavorites() {
+        favoritesBox.innerHTML = '';
+        const favs = items.filter(i => favorites.includes(i.title));
+        if (!favs.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = 'Nothing pinned yet.';
+          favoritesBox.appendChild(empty);
+          return;
+        }
+        for (const it of favs) favoritesBox.appendChild(createCard(it));
+      }
+
+      function toggleFavorite(title) {
+        const i = favorites.indexOf(title);
+        if (i === -1) favorites.push(title);
+        else favorites.splice(i, 1);
+        save(LS_FAV, favorites);
+      }
+      // ---------- Actions ----------
+      async function addTopic(title) {
+        // quick inline skeleton
+        const sk = document.createElement('div');
+        sk.className = 'card';
+        sk.innerHTML = `
+			<div class="thumb" style="opacity:.2"></div>
+			<div class="meta">
+				<div class="fact-title">Loading…</div>
+				<div class="muted">Fetching summary for 
+					<b>${title}</b>…
+				</div>
+			</div>`;
+        factsList.prepend(sk);
+        try {
+          const data = await fetchFact(title);
+          const obj = {
+            title: data.title,
+            extract: data.extract,
+            thumbnail: data.thumbnail,
+            originalimage: data.originalimage,
+            content_urls: data.content_urls,
+            ts: Date.now()
+          };
+          const idx = items.findIndex(x => x.title === obj.title);
+          if (idx >= 0) items[idx] = obj;
+          else items.unshift(obj);
+          save(LS_KEY, items);
+        } catch (e) {
+          const err = document.createElement('div');
+          err.className = 'card';
+          err.style.borderColor = 'var(--danger)';
+          err.innerHTML = `
+			<div class="meta">
+				<div class="fact-title">Failed: ${title}</div>
+				<div class="muted">Could not load summary.</div>
+			</div>`;
+          factsList.prepend(err);
+        } finally {
+          sk.remove();
+          render();
+        }
+      }
+      async function performSearch() {
+        const raw = searchInput.value.trim();
+        if (!raw) {
+          alert('Please enter a topic');
+          return;
+        }
+        const topics = await expandQueryToTopics(raw, 10); // expand asterisk tokens
+        for (const t of topics) await addTopic(t);
+        searchInput.value = '';
+        hideAC();
+      }
+      async function performSearchSingle(title) {
+        if (!title) return;
+        await addTopic(title);
+        hideAC();
+      }
+      async function updateAll() {
+        if (!items.length) return;
+        const titles = items.map(x => x.title);
+        for (const t of titles) await addTopic(t);
+      }
+
+      function doExport() {
+        const payload = {
+          items,
+          favorites,
+          exportedAt: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {
+          type: 'application/json'
+        });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'facts-board.json';
+        a.click();
+      }
+
+      function doImport(file) {
+        const r = new FileReader();
+        r.onload = () => {
+          try {
+            const j = JSON.parse(r.result);
+            if (Array.isArray(j.items)) items = j.items;
+            if (Array.isArray(j.favorites)) favorites = j.favorites;
+            save(LS_KEY, items);
+            save(LS_FAV, favorites);
+            render();
+          } catch {
+            alert('Invalid JSON');
+          }
+        };
+        r.readAsText(file);
+      }
+      // ---------- Autocomplete UI ----------
+      let acIndex = -1,
+        acTimer;
+
+      function hideAC() {
+        acPanel.style.display = 'none';
+        acPanel.innerHTML = '';
+        acIndex = -1;
+      }
+
+      function showAC() {
+        if (acPanel.children.length) acPanel.style.display = 'block';
+      }
+
+      function setActive(idx) {
+        const children = [...acPanel.children];
+        children.forEach(el => el.classList.remove('active'));
+        if (idx >= 0 && idx < children.length) {
+          children[idx].classList.add('active');
+          acIndex = idx;
+        }
+      }
+
+      function renderAC(list) {
+        acPanel.innerHTML = '';
+        if (!list.length) {
+          hideAC();
+          return;
+        }
+        for (let i = 0; i < list.length; i++) {
+          const it = list[i];
+          const item = document.createElement('div');
+          item.className = 'ac-item';
+          item.dataset.title = it.title;
+          item.innerHTML = `
+          
+					<img class="ac-thumb" ${it.thumb?`src="${it.thumb}"`:''} alt="">
+						<div style="min-width:0">
+							<div class="ac-title">${it.title}</div>
+							<div class="ac-desc">${it.desc||''}</div>
+						</div>`;
+          // CLICK → run search immediately for this item
+          item.onclick = () => performSearchSingle(it.title);
+          item.onmouseenter = () => setActive(i);
+          acPanel.appendChild(item);
+        }
+        acIndex = -1;
+        showAC();
+      }
+      searchInput.addEventListener('input', () => {
+        clearTimeout(acTimer);
+        const raw = searchInput.value.trim();
+        const last = raw.split(',').pop().trim();
+        const starPrefix = last.endsWith('*') ? last.slice(0, -1) : last;
+        if (!starPrefix) {
+          hideAC();
+          return;
+        }
+        acTimer = setTimeout(async () => {
+          const list = await fetchSuggestions(starPrefix, 10);
+          renderAC(list);
+        }, 160);
+      });
+      // keyboard on dropdown
+      searchInput.addEventListener('keydown', (e) => {
+        if (acPanel.style.display !== 'block') return;
+        const items = [...acPanel.children];
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setActive(Math.min(acIndex + 1, items.length - 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setActive(Math.max(acIndex - 1, 0));
+        } else if (e.key === 'Enter') {
+          if (acIndex >= 0) {
+            e.preventDefault();
+            const t = items[acIndex].dataset.title;
+            performSearchSingle(t);
+          }
+        } else if (e.key === 'Escape') {
+          hideAC();
+        }
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ac-wrap')) hideAC();
+      });
+      // ---------- Wire up ----------
+      searchBtn.addEventListener('click', performSearch);
+      updateAllBtn.addEventListener('click', updateAll);
+      sorter.addEventListener('change', render);
+      exportBtn.addEventListener('click', doExport);
+      importInp.addEventListener('change', e => {
+        const f = e.target.files?.[0];
+        if (f) doImport(f);
+        e.target.value = '';
+      });
+      window.addEventListener('keydown', e => {
+        if (e.key === '/' && document.activeElement !== searchInput) {
+          e.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+        }
+      });
+      // First paint
+      render();
+    </script>
+  </body>
+</html>
